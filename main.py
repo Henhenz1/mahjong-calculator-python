@@ -6,6 +6,7 @@ class Meld:
         self.closed = True
         self.wind = False
         self.dragon = False
+        self.green = False
 
     def valid_meld(self):
         if len(self.tiles) not in range(3,6):                           # Minimum length 3 for honor pon
@@ -74,12 +75,25 @@ class Meld:
         self.closed = evaluate_yn('closed_meld')
         return self.closed
 
+    def green_meld(self):
+        if self.suit == 'manzu' or self.suit == 'pinzu':
+            return False
+        if self.suit == 'souzu':
+            for i in range(len(self.tiles)-1):
+                if self.tiles[i+1] not in '23468':
+                    return False
+        if self.suit == 'honor':
+            if self.tiles[0] != 'G':
+                return False
+        return True
+
 class Pair:
     def __init__(self):
         self.tiles = ''
         self.suit = ''
         self.wind = False
         self.dragon = False
+        self.green = False
 
     def valid_pair(self):
         if len(self.tiles) not in range(2,4):
@@ -123,6 +137,18 @@ class Pair:
             return True
         else:
             return False
+
+    def green_pair(self):
+        if self.suit == 'manzu' or self.suit == 'pinzu':
+            return False
+        if self.suit == 'souzu':
+            for i in range(len(self.tiles)-1):
+                if self.tiles[i+1] not in '23468':
+                    return False
+        if self.suit == 'honor':
+            if self.tiles[0] != 'G':
+                return False
+        return True
 
 def yes_or_no_valid(yn):                #takes a string and checks to see if it fits accepted yes/no strings
     yn = yn.upper()                     # MAKE SURE TO CONVERT INPUT TO STR OR upper() WILL BREAK
@@ -227,6 +253,15 @@ def daisuushi_check():
     return winds in daisuushi_string
 
 def daisangen_check():
+    if std_pair.dragon == True:
+        return False
+    dragons = [melds[i].tiles for i in range(4) if melds[i].dragon == True]
+    if len(dragons) != 3:
+        return False
+    for i in range(len(dragons)):
+        dragons[i] = dragons[i][:3]
+    dragons = ''.join(sorted(dragons))
+    return dragons in daisangen_string
 
 def daichisei_check():
     for i in range(7):
@@ -242,9 +277,36 @@ def tsuuiisou_check():
             return False
     if std_pair.suit != 'honor':
         return False
-
     return True
 
+def chinroutou_check():
+    for i in range(4):
+        if melds[i].suit == 'honor' or melds[i].meld_type == 'chi'
+        return False
+        for j in range(len(melds[i].tiles)-1):
+            if melds[i].tiles[j+1] not in '19':
+                return False
+    return True
+
+def ryuuiisou_check():
+    for i in range(4):
+        if not melds[i].green_meld:
+            return False
+    if not std_pair.green_pair:
+        return False
+    return True
+
+def daisharin_check():
+    if melds[0].suit == melds[1].suit == melds[2].suit == melds[3].suit == std_pair.suit != 'honor':
+        numbers = [melds[i].tiles[1:] for i in range(4)]
+        numbers.append(std_pair.tiles[1:])
+        numbers = ''.join(sorted(''.join(numbers)))
+        return numbers in daisharin_string
+
+def iipeikou_ryanpeikou_check():
+    sets = [melds[i].tiles for i in range(4) if melds[i].meld_type == 'chi']
+    duplicate_sets = set([meld for meld in sets if sets.count(meld) > 1])
+    return len(duplicate_sets)
 
 # suit = []                           # come back to this after the rest of the calculator is done
 # for i in range(1,10):               # creates list of numbers for checking if user has specified more tiles than exist
@@ -258,6 +320,7 @@ tiles = ''
 wait = ''
 hand = []
 hand_closed = True
+valid_closed = False                  # to stop user from inputting invalid closed/open information combinations
 hand_has_kan = False
 tsumo = True
 dealer = False
@@ -343,7 +406,9 @@ invalid_input = "Invalid input. Please re-enter."
 chuuren_strings = ['11112345678999','11122345678999','11123345678999','11123445678999','11123455678999','11123456678999','11123456778999','11123456788999','11123456789999']
 shousuushi_strings = ['EEENNNSSSWW','EEENNNSSWWW','EEENNSSSWWW','EENNNSSSWWW']
 daisuushi_string = ['EEENNNSSSWWW']
+daisangen_string = ['GGGHHHRRR']
 daichisei_string = ['EEGGHHNNRRSSWW']
+daisharin_string = ['22334455667788']
 
 
 print('Japanese Mahjong Point Calculator\nPython Edition\n')
@@ -363,6 +428,8 @@ hand_closed = evaluate_yn('hand_closed')
 print(hand_closed)
 
 tsumo = evaluate_yn('tsumo')
+if tsumo and hand_closed:
+    menzen_tsumo = True
 print(tsumo)
 
 if wait == '5' and hand_closed:
@@ -398,15 +465,21 @@ elif not chiitoitsu:
         print('Suits are (P)inzu/coins, souzu/(B)amboo, and (M)anzu/characters.')
         print('Honors are (E)ast, (S)outh, (W)est, (N)orth, (R)ed/Chun, White/(H)aku, and (G)reen/Hatsu.')
         print('Examples: P123, M555, B9999, HHH, EEEE')
-        for i in range(len(melds)):
-            melds[i].tiles = str(input('Meld ' + str(i+1) + ': '))
-            while not melds[i].valid_meld():
-                invalid()
+        while valid_closed == False:
+            for i in range(len(melds)):
                 melds[i].tiles = str(input('Meld ' + str(i+1) + ': '))
-            melds[i].suit_meld()
-            melds[i].type_meld()
-            if not closed:
-                melds[i].closed_meld()
+                while not melds[i].valid_meld():
+                    invalid()
+                    melds[i].tiles = str(input('Meld ' + str(i+1) + ': '))
+                melds[i].suit_meld()
+                melds[i].type_meld()
+                melds[i].green_meld()
+                if not hand_closed:
+                    melds[i].closed_meld()
+            if melds[0].closed == melds[1].closed == melds[2].closed == melds[3].closed == True and tsumo:
+                print('Invalid input. You cannot win an open hand with four closed melds with tsumo. Please try again.')
+                continue
+            valid_closed = True
 
         std_pair.tiles = str(input("Enter pair: "))
         while not std_pair.valid_pair():
@@ -454,7 +527,7 @@ elif not chiitoitsu:
         if not rinshan and not chankan and not haitei and not tsumo and (not ippatsu and not double_riichi):
             houtei = evaluate_yn('houtei')
 
-        if not dealer and not riichi and not rinshan and not chankan and not haitei and not houtei and closed and not hand_has_kan:
+        if not dealer and not riichi and not rinshan and not chankan and not haitei and not houtei and hand_closed and not hand_has_kan:
             if tsumo:
                 chiihou = evaluate_yn('chiihou')
                 if chiihou:
@@ -464,7 +537,7 @@ elif not chiitoitsu:
                 if renhou:
                     yakuman_counter += 1
 
-        if dealer and not riichi and not rinshan and not chankan and not haitei and not houtei and tsumo and closed and not hand_has_kan:
+        if dealer and not riichi and not rinshan and not chankan and not haitei and not houtei and tsumo and hand_closed and not hand_has_kan:
             tenhou = evaluate_yn('tenhou')
             if tenhou:
                 yakuman_counter += 1
@@ -488,7 +561,7 @@ elif not chiitoitsu:
                     tsuuiisou = True
                     yakuman_counter += 1
 
-                if melds[0].suit == melds[1].suit == melds[2].suit == melds[3].suit == std_pair.suit and closed:
+                if melds[0].suit == melds[1].suit == melds[2].suit == melds[3].suit == std_pair.suit and hand_closed:
                     if melds[0].suit != 'honor':
                         if chuuren_check():
                             chuuren = True
@@ -502,7 +575,7 @@ elif not chiitoitsu:
                         if melds[0].meld_type != 'chi' and melds[1].meld_type != 'chi' and melds[2].meld_type != 'chi' and melds[3].meld_type != 'chi':
                             suuankou = True
                             yakuman_counter += 1
-                            if wait = '5':
+                            if wait == '5':
                                 suuankou_tanki = True
                                 yakuman_counter += 1
 
@@ -513,4 +586,59 @@ elif not chiitoitsu:
                         daisuushi = True
                         yakuman_counter += 2
 
-                if not chuuren:
+                    if daisangen_check():
+                        daisangen = True
+                        yakuman_counter += 1
+
+                    if melds[0].meld_type == melds[1].meld_type == melds[2].meld_type == melds[3].meld_type == 'kan':
+                        suukantsu = True
+                        yakuman_counter += 1
+
+                    if not tsuuiisou and not shousuushi and not daisuushi and not daisangen:
+                        if chinroutou_check():
+                            chinroutou = True
+                            yakuman_counter += 1
+
+                        if ryuuiisou_check():
+                            ryuuiisou = True
+                            yakuman_counter += 1
+
+                        if daisharin_check():
+                            if melds[0].suit == 'pinzu':
+                                daisharin = True
+                            elif melds[0].suit == 'souzu':
+                                daichikurin = True
+                            elif melds[0].suit == 'manzu':
+                                daisuurin = True
+                            yakuman_counter += 1
+
+        if yakuman_counter == 0:
+            if riichi:
+                yaku_han += 1
+                if double_riichi:
+                    yaku_han += 1
+                if ippatsu:
+                    yaku_han += 1
+            if chiitoitsu:
+                yaku_han += 2
+            if menzen_tsumo:
+                yaku_han += 1
+            if haitei:
+                yaku_han += 1
+            if houtei:
+                yaku_han += 1
+            if rinshan:
+                yaku_han += 1
+            if chankan:
+                yaku_han += 1
+            if not chiitoitsu and wait == '1' and hand_closed and melds[0].meld_type == melds[1].meld_type == melds[2].meld_type == melds[3].meld_type == 'chi' and not std_pair.significant_pair():
+                pinfu = True
+                yaku_han += 1
+            #if not chiitoitsu and              #itsuu is messy: come back to this later
+            if not chiitoitsu and hand_closed:
+                if iipeikou_ryanpeikou_check() == 2:
+                    ryanpeikou = True
+                    yaku_han += 3
+                elif iipeikou_ryanpeikou_check() == 1:
+                    iipeikou = True
+                    yaku_han += 1
