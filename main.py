@@ -4,6 +4,22 @@ from math import ceil
 
 class Meld:
     def __init__(self):
+        # a meld is a grouping of 3 or 4 tiles of the same suit, or 3 or 4 identical
+        #   honor tiles, which we designate as their own suit
+        # 4 melds and a pair make up most valid hands, with two exceptions which
+        #   are handled in different methods:
+        #   - chiitoitsu, or seven pairs
+        #   - kokushi musou, or thirteen orphans (one of each honor tile plus one duplicate)
+        # there are 3 different types of melds:
+        #   - chi: 3 tiles of consecutive increasing value (e.g. P345)
+        #   - pon: 3 identical tiles (e.g. S444)
+        #   - kan: 4 identical tiles (e.g. M5555)
+        # a meld is CLOSED if no tile was taken from an opponent's discard to complete
+        #   the meld; closed melds are worth more fu
+        # a meld is SIMPLE if it is comprised only of tiles of value 2-8
+        # a meld is a WIND if it is a pon or kan of E, S, W, or N
+        # a meld is a DRAGON if it is a pon or kan of R, H, or G
+        # a meld is GREEN if it is comprised only of tiles S23468 and G
         self.tiles = ''
         self.suit = ''
         self.meld_type = ''
@@ -25,7 +41,8 @@ class Meld:
             # string length 5 denots non-honors kan
             # any other string length is an invalid meld
         self.tiles = self.tiles.upper()
-        if self.tiles[0] in "ESWNRHG":
+        # check the first character of the meld string to determine how to check for errors
+        if self.tiles[0] in "ESWNRHG":      # first char is an honor tile
             if len(self.tiles) > 4:
                 return False
             for j in range(len(self.tiles)):
@@ -33,7 +50,7 @@ class Meld:
                     return False
             # if the string begins with an honor tile, then string length must not exceed 4
             # honor melds must be pons or kans, so the meld is only valid if all tiles are the same
-        elif self.tiles[0] in "MPB":
+        elif self.tiles[0] in "MPB":        # first char is a suit indicator
             if len(self.tiles) < 4:
                 return False
                 # a non-honors meld is denoted using 1 char for suit and at least 3 for tiles
@@ -41,7 +58,7 @@ class Meld:
             for k in range(len(self.tiles)-1):
                 if self.tiles[k+1] not in "123456789":
                     return False
-                # chars after the suit indicator must be numbers
+                # chars after the suit indicator must be valid numbers
             if len(self.tiles) == 5:
                 for m in range(2,5):
                     if self.tiles[m] != self.tiles[1]:
@@ -64,7 +81,7 @@ class Meld:
             # a meld starting with anything other than a suit indicator or an honor tile is invalid
 
         return True
-        # if the program gets through all checks without returning False, the tile must be valid
+        # if the program gets through all checks without returning False, the meld must be valid
 
     def suit_meld(self):
         # this function is called only if a meld is valid as defined by valid_meld()
@@ -87,11 +104,13 @@ class Meld:
     def type_meld(self):
         # this function is called only if a meld is valid as defined by valid_meld()
         # we can assume that the meld is of length 3, 4, or 5
-        # we use the first char in the tile string as well as the string length to set the meld type
-        # meld types are chi, pon, and kan as defined in comments of valid_meld()
+        # we use the first two chars in the tile string as well as the string length
+        #   to set the meld type
         if len(self.tiles) == 5:
             self.meld_type = 'kan'
             hand_has_kan = True
+            # if hand_has_kan is True, the program later asks if the conditions
+            #   for rinshan kaihou were met
         elif len(self.tiles) == 4 and self.tiles[0] in 'ESWNRHG':
             self.meld_type = 'kan'
             hand_has_kan = True
@@ -123,7 +142,7 @@ class Meld:
 
     def green_meld(self):
         # green tiles are so called because their tiles use only green ink
-        # a meld is green if and only if it is comprised of souzu 23468 or hatsu
+        # a hand composed of all green melds and a green pair fulfills a special scoring condition
         if self.suit == 'manzu' or self.suit == 'pinzu':
             self.green = False
         if self.suit == 'souzu':
@@ -157,7 +176,7 @@ class Pair:
     def valid_pair(self):
         if len(self.tiles) not in range(2,4):
             return False
-        # a pair can be 2 or 3 chars long
+        # a pair string can be 2 or 3 chars long
         # length 2 denotes an honors pair
         # length 3 denotes a non-honors pair
         # tiles in a pair are necessarily the same
@@ -424,25 +443,32 @@ def daisharin_check():
 
 def iipeikou_ryanpeikou_check():
     # called only if hand is closed
-    # iipeikou is true if a hand contains two identical sequences in the same suit
-    # ryanpeikou is true if a hand contains two pairs of identical sequences
-    # ryanpeikou resembles chiitoitsu but is composed of melds and is therefore not scored as chiitoitsu
-    # it is worth 3 han if closed and 2 han if open
+    # iipeikou is true if a hand contains a pair of identical sequences in the same suit
+    # e.g. M112233
+    # ryanpeikou is true if a hand contains 2 pairs of identical sequences
+    # e.g. S223344 P445566
+    # ryanpeikou resembles chiitoitsu but is composed of melds and is therefore
+    #   not scored as chiitoitsu
+    # ryanpeikou is worth 3 han, iipeikou is worth 1 han
+    # returns the number of pairs of identical sequences
     sets = [melds[i].tiles for i in range(4) if melds[i].meld_type == 'chi']
     if melds[0].tiles == melds[1].tiles == melds[2].tiles == melds[3].tiles:
         return 2
+        # if all melds are identical then 2 pairs exist
     duplicate_sets = set([meld for meld in sets if sets.count(meld) > 1])
     return len(duplicate_sets)
 
 def itsuu_check():
-    # itsuu is true if a hand contains three sequences in the same suit forming a straight from 1-9
+    # itsuu is true if a hand contains the three sequences 123, 456, and 789 in
+    #   the same suit forming a straight from 1-9
     # it is worth 2 han if closed and 1 if open
     sets = sorted([melds[i].tiles for i in range(4) if melds[i].meld_type == 'chi'])
     if len(sets) < 3:
         return False
-    # an itsuu hand must have at least three chi melds
+        # an itsuu hand must have at least three chi melds
     if len(sets) == 3:
-        # if there are exactly three chi melds, then their numbers must form 123456789 and their suits must be the same
+        # if there are exactly three chi melds, then their numbers must form 123456789
+        #   and their suits must be the same
         if not (sets[0][0] == sets[1][0] == sets[2][0]):
             return False
         itsuu_tiles = ''.join(sorted(([sets[i][1:] for i in range(3)])))
@@ -451,12 +477,15 @@ def itsuu_check():
         itsuu_suits = sorted([melds[i].tiles[0] for i in range(4)])
         for suit in ['B','M','P']:
             if itsuu_suits.count(suit) == 3:
-                # if there are three chi melds of the same suit, their numbers must form 123456789
+                # if there are three chi melds of the same suit, their numbers
+                #   must form 123456789
                 itsuu_tiles = ''.join(sorted(([sets[i][1:] for i in range(4) if sets[i][0] == suit])))
                 return itsuu_tiles == itsuu_string
             elif itsuu_suits.count(suit) == 4:
-                # if there are four chi melds, there is at least one meld that does not contribute to itsuu
-                # if all four chi melds are of the same suit, then the set of their numbers must contain '123', '456', and '789'
+                # if there are four chi melds, there is at least one meld that
+                #   does not contribute to itsuu
+                # if all four chi melds are of the same suit, then the set of their
+                #   numbers must contain '123', '456', and '789'
                 itsuu_tiles = set()
                 for i in range(4):
                     itsuu_tiles.add(sets[i][1:])
@@ -464,17 +493,22 @@ def itsuu_check():
         return False
 
 def sanshoku_doujun_check():
-    # sanshoku doujun is true if a hand contains a given chi meld in all three non-honor suits
+    # sanshoku doujun is true if a hand contains the same chi meld in all three non-honor suits
+    #   e.g. M234 P234 S234
     # it is worth 2 han if closed and 1 if open
     sets = sorted([melds[i].tiles for i in range(4) if melds[i].meld_type == 'chi'])
     if len(sets) < 3:
         return False
+        # by definition sanshoku doujun requires at least three chi melds
     if len(sets) == 3:
         if sets[0][1:] == sets[1][1:] == sets[2][1:] and sets[0][0] != sets[1][0] != sets[2][0] != sets[0][0]:
             return True
+        # if there exactly three chi melds, then all must have different suits
+        #   and their numbers must be identical
     if len(sets) == 4:
         suit_check = ''.join(sorted([sets[i][0] for i in range(4)]))
-        if suit_check not in sanshoku_four_suits:               # if this doesn't trigger when it's supposed to, it might be a problem with not putting upper()
+        if suit_check not in sanshoku_four_suits:
+            # if this doesn't trigger when it's supposed to, it might be a problem with not putting upper()
             return False
         for i in range(3):
             for j in range(3-i):
@@ -514,37 +548,48 @@ def sanshoku_doukou_check():
         # this is literally just sanshoku_doujun but slightly modified...maybe find a way to merge? not high on priorities list as long as it works
 
 def honroutou_check():
+    # true if a hand contains only terminals and honor tiles
     # this function is only called if the yakuman counter is 0
-    # therefore, we can assume the hand is neither chinroutou not tsuuiisou
-    # if this check finds honroutou is true, then junchanta must be false and there is no need to check
+    # therefore, we can assume the hand is neither chinroutou nor tsuuiisou
+    # if this check finds honroutou is true, then junchanta must be false, as it
+    #   requires at least one non-terminal tile, so its corresponding check is skipped
+    # honroutou is worth 2 han
     if chiitoitsu:
         return all([not ct_pairs[i].simple_pair() for i in range(7)])
     else:
         return all([(not melds[i].is_chi() and not melds[i].simple_meld()) for i in range(4)]) and not std_pair.simple_pair()
 
 def junchanta_check():
+    # true if all four melds and the pair contain at least one terminal
     # this function is only called if the yakuman counter is 0 and chiitoitsu is false
     # therefore, we can assume the hand is not chinroutou and we need only check for a terminal in each set and no honors
     # this check is skipped if honroutou_check returns True
     # junchanta is incompatible with chiitoitsu because there are only six distinct terminals
-    return all([not melds[i].simple_meld() and not melds[i].suit == 'honor' for i in range(4)])
+    # junchanta is worth 3 han when closed and 2 han if open
+    return all([not melds[i].simple_meld() and not melds[i].suit == 'honor' for i in range(4), not std_pair.simple_pair() and not std_pair.suit == 'honor'])
 
 def shousangen_check():
-    # this function is only called if the yakuman counter is 0 and chiitoitsu is false
     # shousangen requires pons of two dragons and a pair of the third
+    # this function is only called if the yakuman counter is 0 and chiitoitsu is false
     # we can assume the user doesn't input an impossible hand (e.g. two pons of the same dragon)
     # therefore, dragon melds and the dragon pair (if they exist) are necessarily all of different dragons
+    # shousangen is worth 2 han
     dragon_melds = [melds[i].tiles for i in range(4) if melds[i].dragon]
     return all([std_pair.dragon, len(dragon_melds) == 2])
 
 def flush_check():
+    # a hand satisfies chinitsu when all tiles belong to a single suit
+    # a hand satisfies honitsu when all tiles belong to a single suit or are honor tiles
     # this function is called only if the yakuman counter is zero, so we can assume the hand is not tsuuiisou
     # because sets have no duplicate elements, they can be used to test the presence of suits in the hand
     # if there is only one element in the suit set, chinitsu is true
     # if there are two elements and one is 'honor', then honitsu is true
     # if there are three or four, neither is true
-    # this function does not return anything
-    # kinda breaks the conventions we've had so far but it shouldn't be too big a deal
+    # this function does not return anything, and instead modifies global variables
+    #   which are later used in score determination
+    # this kinda breaks the conventions we've had so far but it shouldn't be too big a deal
+    # chinitsu is worth 6 han when closed and 5 when open
+    # honitsu is worth 3 han when closed and 2 when open
     global honitsu_pinzu
     global honitsu_souzu
     global honitsu_manzu
@@ -582,6 +627,8 @@ def flush_check():
             yaku_han += 1
 
 def tanyao_check():
+    # tanyao is true when all tiles are number tiles 2-8
+    # it is worth 1 han
     if chiitoitsu:
         return all([ct_pairs[i].simple for i in range(7)])
     if not chiitoitsu:

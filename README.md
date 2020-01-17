@@ -4,7 +4,7 @@ well, might as well use this place for thoughts and todo for now
 
 sets are actually pretty useful. maybe find ways of implementing for sanankou, ii/ryanpeikou, sankantsu possibly more
 
-fuck, sets are close to absolutely necessary. managed some good work today 3/3/17 but gonna need to go back through and make everything work with sets
+sets are close to absolutely necessary. managed some good work today 3/3/17 but gonna need to go back through and make everything work with sets
     ...or maybe not? i'm not sure
     never mind, both are necessary since set doesn't support indexing b/c unordered
 
